@@ -7,8 +7,21 @@ import numpy as np
 from models import Autoencoder, FailurePredictor
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime
+from prometheus_client import make_asgi_app, Gauge, Counter
 
 app = FastAPI(title="Storage Anomaly Prediction API")
+
+# Prometheus Metrics
+metrics_app = make_asgi_app()
+app.mount("/metrics", metrics_app)
+
+ANOMALY_SCORE = Gauge('disk_anomaly_score', 'Reconstruction error from Autoencoder', ['disk_id'])
+FAILURE_PROB = Gauge('disk_failure_probability', 'Failure probability from XGBoost', ['disk_id'])
+PREDICTION_COUNT = Counter('disk_predictions_total', 'Total predictions made', ['disk_id', 'status'])
+TEMPERATURE = Gauge('disk_temperature_celsius', 'Disk Temperature', ['disk_id'])
+READ_LATENCY = Gauge('disk_read_latency_ms', 'Read Latency', ['disk_id'])
+WRITE_LATENCY = Gauge('disk_write_latency_ms', 'Write Latency', ['disk_id'])
+THROUGHPUT = Gauge('disk_throughput_mbps', 'Throughput', ['disk_id'])
 
 app.add_middleware(
     CORSMiddleware,
@@ -82,6 +95,17 @@ async def predict(metrics: DiskMetrics):
         
         is_anomaly = mse > 0.5 # Threshold needs tuning, but 0.5 is a placeholder
         will_fail = failure_prob > 0.5
+        
+        # Update Prometheus Metrics
+        ANOMALY_SCORE.labels(disk_id=metrics.disk_id).set(mse)
+        FAILURE_PROB.labels(disk_id=metrics.disk_id).set(failure_prob)
+        TEMPERATURE.labels(disk_id=metrics.disk_id).set(metrics.smart_194_temperature_celsius)
+        READ_LATENCY.labels(disk_id=metrics.disk_id).set(metrics.read_latency_ms)
+        WRITE_LATENCY.labels(disk_id=metrics.disk_id).set(metrics.write_latency_ms)
+        THROUGHPUT.labels(disk_id=metrics.disk_id).set(metrics.throughput_mbps)
+        
+        status = "FAIL" if will_fail else "HEALTHY"
+        PREDICTION_COUNT.labels(disk_id=metrics.disk_id, status=status).inc()
         
         return {
             "disk_id": metrics.disk_id,
