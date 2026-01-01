@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Storage Anomaly Prediction Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f9; color: #333; margin: 0; padding: 20px; }
+        h1 { text-align: center; color: #2c3e50; }
+        .container { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .card h2 { margin-top: 0; font-size: 1.2em; color: #34495e; }
+        .status { font-weight: bold; padding: 5px 10px; border-radius: 4px; display: inline-block; }
+        .status.HEALTHY { background-color: #d4edda; color: #155724; }
+        .status.FAIL { background-color: #f8d7da; color: #721c24; }
+        .metric { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 0.9em; }
+        #alerts { margin-top: 20px; padding: 10px; background: #fff3cd; border: 1px solid #ffeeba; color: #856404; display: none; }
+    </style>
+</head>
+<body>
+    <h1>Storage Health Dashboard</h1>
+    
+    <div id="alerts">⚠️ High Anomaly Detected on one or more disks!</div>
+
+    <div class="container" id="disk-container">
+        <!-- Disk cards will be inserted here -->
+    </div>
+
+    <script>
+        const disks = ['disk_1', 'disk_2', 'disk_3', 'disk_4', 'disk_5'];
+        const container = document.getElementById('disk-container');
+        const alertBox = document.getElementById('alerts');
+
+        function createCard(diskId) {
+            const div = document.createElement('div');
+            div.className = 'card';
+            div.id = `card-${diskId}`;
+            div.innerHTML = `
+                <h2>${diskId}</h2>
+                <div class="metric">Status: <span class="status" id="status-${diskId}">Loading...</span></div>
+                <div class="metric">Failure Prob: <span id="prob-${diskId}">-</span></div>
+                <div class="metric">Anomaly Score: <span id="score-${diskId}">-</span></div>
+                <div class="metric">Temp: <span id="temp-${diskId}">-</span>°C</div>
+                <div class="metric">Latency (R/W): <span id="lat-${diskId}">-</span> ms</div>
+            `;
+            return div;
+        }
+
+        disks.forEach(id => container.appendChild(createCard(id)));
+
+        async function fetchData() {
+            let hasAlert = false;
+            for (const diskId of disks) {
+                // Simulate data for the disk
+                const isAnomaly = Math.random() < 0.1; // 10% chance of anomaly
+                const payload = {
+                    "disk_id": diskId,
+                    "smart_5_reallocated_sector_count": isAnomaly ? 10 : 0,
+                    "smart_187_reported_uncorrectable_errors": isAnomaly ? 5 : 0,
+                    "smart_194_temperature_celsius": isAnomaly ? 60 : 35,
+                    "smart_197_current_pending_sector_count": isAnomaly ? 5 : 0,
+                    "read_latency_ms": isAnomaly ? 100 : 5,
+                    "write_latency_ms": isAnomaly ? 150 : 10,
+                    "throughput_mbps": isAnomaly ? 10 : 100
+                };
+
+                try {
+                    const response = await fetch('http://127.0.0.1:8000/predict', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    const data = await response.json();
+
+                    document.getElementById(`status-${diskId}`).textContent = data.prediction;
+                    document.getElementById(`status-${diskId}`).className = `status ${data.prediction}`;
+                    document.getElementById(`prob-${diskId}`).textContent = (data.failure_probability * 100).toFixed(1) + '%';
+                    document.getElementById(`score-${diskId}`).textContent = data.anomaly_score.toFixed(2);
+                    document.getElementById(`temp-${diskId}`).textContent = payload.smart_194_temperature_celsius;
+                    document.getElementById(`lat-${diskId}`).textContent = `${payload.read_latency_ms}/${payload.write_latency_ms}`;
+
+                    if (data.prediction === 'FAIL') hasAlert = true;
+
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+            
+            alertBox.style.display = hasAlert ? 'block' : 'none';
+        }
+
+        setInterval(fetchData, 2000);
+        fetchData();
+    </script>
+</body>
+</html>
