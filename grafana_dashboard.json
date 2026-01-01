@@ -25,7 +25,7 @@
         {
             "datasource": {
                 "type": "prometheus",
-                "uid": "P1"
+                "uid": "ef8ucrbnrdb0gf"
             },
             "fieldConfig": {
                 "defaults": {
@@ -73,7 +73,7 @@
                 {
                     "datasource": {
                         "type": "prometheus",
-                        "uid": "P1"
+                        "uid": "ef8ucrbnrdb0gf"
                     },
                     "expr": "disk_failure_probability",
                     "refId": "A"
@@ -85,7 +85,7 @@
         {
             "datasource": {
                 "type": "prometheus",
-                "uid": "P1"
+                "uid": "ef8ucrbnrdb0gf"
             },
             "fieldConfig": {
                 "defaults": {
@@ -162,7 +162,7 @@
                 {
                     "datasource": {
                         "type": "prometheus",
-                        "uid": "P1"
+                        "uid": "ef8ucrbnrdb0gf"
                     },
                     "expr": "disk_anomaly_score",
                     "refId": "A"
@@ -174,7 +174,7 @@
         {
             "datasource": {
                 "type": "prometheus",
-                "uid": "P1"
+                "uid": "ef8ucrbnrdb0gf"
             },
             "fieldConfig": {
                 "defaults": {
@@ -251,7 +251,7 @@
                 {
                     "datasource": {
                         "type": "prometheus",
-                        "uid": "P1"
+                        "uid": "ef8ucrbnrdb0gf"
                     },
                     "expr": "disk_throughput_mbps",
                     "refId": "A"
